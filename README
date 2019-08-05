@@ -1,0 +1,18 @@
+A ROS based monocular visual odometry package. 
+Development base was inspired from an article and a subsequent 
+code on monocular visual odometry found in https://avisingh599.github.io/vision/monocular-vo.
+
+
+1. The node subscribes to camera images.
+2. Extracts FAST/ORB/OPENSURF features from each frame.
+3. Tracks the features in subsequent frames. Re-extracts features if the number of features drops below a certain threshold.
+4. Estimates the essential matrix once matching pair of features are found.
+5. Recovers the rotation and translation matrix from the essential matrix.
+6. Computes the overall transformation by concatenating the rotation and translation matrices.
+
+
+TODO:
+1. Solve the scale ambiguity.
+2. Validate the estimated trajectory.
+
+
