@@ -37,5 +37,5 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 #add_executable(vo_node src/visodo.cpp)
 #target_link_libraries(vo_node ${OpenCV_LIBS} ${catkin_LIBRARIES} ${PROJECT_SOURCE_DIR}/include/libsurf.so)
 
-add_executable(visual_odometry_node src/visual_odometry.cpp)
-target_link_libraries(visual_odometry_node ${OpenCV_LIBS} ${catkin_LIBRARIES} ${PROJECT_SOURCE_DIR}/include/libsurf.so)
+add_executable(${PROJECT_NAME}_node src/visual_odometry.cpp)
+target_link_libraries(${PROJECT_NAME}_node ${OpenCV_LIBS} ${catkin_LIBRARIES} ${PROJECT_SOURCE_DIR}/include/libsurf.so)

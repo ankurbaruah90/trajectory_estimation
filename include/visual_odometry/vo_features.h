@@ -17,7 +17,7 @@
 #include <string>
 
 #define USE_ORB 0
-#define USE_OPEN_SURF 0
+#define USE_OPEN_SURF 1
 #define MAX_INLIER_DIST 15
 #define MIN_POINTS 20
 
