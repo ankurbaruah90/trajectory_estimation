@@ -6,38 +6,27 @@
 
 #include "OpenSURFcpp/src/surflib.h"
 
-#include <iostream>
-#include <ctype.h>
-#include <algorithm> // for copy
-#include <iterator> // for ostream_iterator
-#include <vector>
-#include <ctime>
-#include <sstream>
-#include <fstream>
-#include <string>
 
 #define USE_ORB 1
 #define USE_OPEN_SURF 0
 #define MAX_INLIER_DIST 15
 #define MIN_POINTS 20
 
-using namespace cv;
-using namespace std;
-
-bool featureTracking(Mat img_1, Mat img_2, vector<Point2f>& points1, vector<Point2f>& points2, vector<uchar>& status)	{
+bool featureTracking(cv::Mat img_1, cv::Mat img_2, std::vector<cv::Point2f>& points1, std::vector<cv::Point2f>& points2, std::vector<uchar>& status)
+{
 
     //this function automatically gets rid of points for which tracking fails
-    vector<float> err;
-    Size winSize=Size(21,21);
-    calcOpticalFlowPyrLK(img_1, img_2, points1, points2, status, err, winSize);
+    std::vector<float> err;
+    cv::Size winSize=cv::Size(21,21);
+    cv::calcOpticalFlowPyrLK(img_1, img_2, points1, points2, status, err, winSize);
 
     //getting rid of points for which the KLT tracking failed or those who have gone outside the frame
     int indexCorrection = 0;
     for( int i=0; i<status.size(); i++)
     {
-        Point2f pt = points2.at(i- indexCorrection);
+        cv::Point2f pt = points2.at(i- indexCorrection);
         if ((status.at(i) == 0) || (pt.x < 0) || (pt.y < 0)
-             || (cv::norm(cv::Mat(points1[i]), cv::Mat(points2[i])) >= int(MAX_INLIER_DIST)))
+                || (cv::norm(cv::Mat(points1[i]), cv::Mat(points2[i])) >= int(MAX_INLIER_DIST)))
         {
             if((pt.x<0) || (pt.y<0))
             {
@@ -55,7 +44,7 @@ bool featureTracking(Mat img_1, Mat img_2, vector<Point2f>& points1, vector<Poin
     return true;
 }
 
-void featureDetection(Mat img_1, vector<Point2f>& points1)
+void featureDetection(cv::Mat img_1, std::vector<cv::Point2f>& points1)
 {
     cv::Mat binary, binary_tmp;
     cv::GaussianBlur(img_1, binary_tmp, cv::Size(1,1), cv::BORDER_DEFAULT);
@@ -90,7 +79,7 @@ void featureDetection(Mat img_1, vector<Point2f>& points1)
     FAST(img_1, keypoints_1, fast_threshold, nonmaxSuppression);
 #endif
 
-    KeyPoint::convert(keypoints_1, points1, vector<int>());
+    cv::KeyPoint::convert(keypoints_1, points1, std::vector<int>());
 
     cv::Mat img_display = img_1.clone();
     cv::Mat pointmat;
