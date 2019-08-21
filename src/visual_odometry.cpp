@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <sensor_msgs/Image.h>
 #include <cv_bridge/cv_bridge.h>
+#include <tf/LinearMath/Matrix3x3.h>
 
 #ifdef __MINGW32__
 #include <sys/stat.h>
@@ -14,12 +15,20 @@
 #define SCALE 1
 
 ros::NodeHandle *n_;
-Mat R_f, t_f;
+Mat rmat, tmat;
 Mat prevImage;
 vector<Point2f> prevFeatures;
 Mat traj = Mat::zeros(600, 600, CV_8UC3);
-double focal = 940.9240116;
-cv::Point2d pp(636.445312, 359.391479);
+double fx = 172.98992850734132;
+double fy = 172.98992850734132;
+double cx = 163.33639726024606;
+double cy = 134.99537889030861;
+double k1 = -0.027576733308582076;
+double k2 = -0.006593578674675004;
+double p1 = 0.0008566938165177085;
+double p2 = -0.00030899587045247486;
+Mat cameraMatrix = (Mat1d(3, 3) << fx, 0, cx, 0, fy, cy, 0, 0, 1);
+Mat distortionCoefficients = (Mat1d(1, 4) << k1, k2, p1, p2);
 
 // Code for sorting the string ----------------------------------------------------------
 int strip_num(string str)
@@ -86,21 +95,6 @@ static void getFilesInDirectory(const string& dirName, vector<string>& fileNames
 }
 // --------------------------------------------------------------------------------------
 
-//void imageCallBack(const sensor_msgs::ImageConstPtr& msg)
-//{
-//    cv_bridge::CvImagePtr cv_ptr;
-//    cv::Mat currImage;
-//    try
-//    {
-//        cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-//    }
-//    catch (cv_bridge::Exception& e)
-//    {
-//        ROS_ERROR("cv_bridge exception: %s", e.what());
-//        return;
-//    }
-
-//    cv::cvtColor(cv_ptr->image, currImage, CV_BGR2GRAY);
 void imageCallBack(cv::Mat currImage)
 {
     if(prevImage.empty())
@@ -117,20 +111,35 @@ void imageCallBack(cv::Mat currImage)
     {
 
         Mat E, R, t, mask;
-        E = findEssentialMat(currFeatures, prevFeatures, focal, pp, RANSAC, 0.999, 1.0, mask);
-        recoverPose(E, currFeatures, prevFeatures, R, t, focal, pp, mask);
+        E = findEssentialMat(currFeatures, prevFeatures, cameraMatrix, RANSAC, 0.999, 1.0, mask);
+        recoverPose(E, currFeatures, prevFeatures, cameraMatrix, R, t, mask);
 
-        if(t_f.empty())
-            t_f = t.clone();
+        if(tmat.empty())
+            tmat = t.clone();
 
-        if(R_f.empty())
-            R_f = R.clone();
+        if(rmat.empty())
+            rmat = R.clone();
 
         if((SCALE > 0.1) && (t.at<double>(2) > t.at<double>(0)) && (t.at<double>(2) > t.at<double>(1)))
         {
-            t_f = t_f + SCALE*(R_f*t);
-            R_f = R*R_f;
+            tmat = tmat + SCALE*(R*t);
+            rmat = R*rmat;
         }
+
+        //-------------------------------------------------------------------------------
+
+        tf::Matrix3x3 tf3d;
+        tf3d.setValue(rmat.at<double>(0,0), rmat.at<double>(0,1), rmat.at<double>(0,2),
+              rmat.at<double>(1,0), rmat.at<double>(1,1), rmat.at<double>(1,2),
+              rmat.at<double>(2,0), rmat.at<double>(2,1), rmat.at<double>(2,2));
+
+        double roll, pitch, yaw;
+        tf3d.getRPY(roll, pitch, yaw);
+
+        cout << "Roll " << roll << " Pitch " << pitch << " Yaw " << yaw << endl;
+        cout << "\nRotation " << R << "\nTranslation " << t << endl;
+
+        //-------------------------------------------------------------------------------
 
         cv::Mat img_display = currImage.clone();
         for(size_t i1 = 0; i1 < status.size(); i1++)
@@ -151,10 +160,8 @@ void imageCallBack(cv::Mat currImage)
 
     prevImage = currImage.clone();
 
-    cout << "\nRotation " << R_f << "\nTranslation " << t_f << endl;
-
-    int x = int(t_f.at<double>(0)) + traj.cols/2;
-    int y = int(t_f.at<double>(2)) + traj.rows/2;
+    int x = int(tmat.at<double>(0)) + traj.cols/2;
+    int y = int(tmat.at<double>(2)) + traj.rows/2;
     circle(traj, Point(x, y) ,1, CV_RGB(255,0,0), 2);
     cv::imshow( "Trajectory", traj );
     cv::waitKey(1);
@@ -166,7 +173,7 @@ int main(int argc, char** argv)
     n_ = new ros::NodeHandle;
 //    ros::Rate rate(20);
 
-    cv::Mat img;
+    cv::Mat img,img_rectified;
     std::string path = ros::package::getPath("trajectory_estimation");
     static vector<string> images;
     static vector<string> validExtensions;
@@ -182,8 +189,11 @@ int main(int argc, char** argv)
     {
         std::string fileName = *it;
         img = cv::imread(fileName);
-        imageCallBack(img);
-        cout << "FileName " << count++ << " " << fileName << endl;
+        imshow("image",img);
+        waitKey(1);
+        undistort(img, img_rectified, cameraMatrix, distortionCoefficients);
+        imageCallBack(img_rectified);
+        cout << "\nProgress " << count++ << "%" << endl;
     }
 
 
